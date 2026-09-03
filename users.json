@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "password": "$2b$10$RNjq5XHxwcJwQmSjUKfbaugWajA8.BoNEa28hveNfn0ZkgB1I7P66",
+    "email": "admin@eventflow.com",
+    "role": "admin"
+  },
+  {
+    "id": 2,
+    "username": "customer",
+    "password": "$2b$10$2hNNhalK1XUi3A.33uEnJueiTIXqJnxOv7cJoNwwPuTDTEtUkr6E.",
+    "email": "customer@eventflow.com",
+    "role": "customer"
+  }
+]

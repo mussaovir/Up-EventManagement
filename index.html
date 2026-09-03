@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventFlow | Event Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(8, 8, 8, 0.1), 0 10px 10px -5px rgba(4, 4, 4, 0.04);
+        }
+
+        .smooth-transition {
+            transition: all 0.3s ease;
+        }
+
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        #eventForm .form-input:focus {
+            border-color: #46b0e5;
+            box-shadow: 0 0 0 1px #1409e0;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #cityReportPrintArea,
+            #weeklyReportPrintArea,
+            #monthlyReportPrintArea,
+            #yearlyReportPrintArea,
+            #cityReportPrintArea *,
+            #weeklyReportPrintArea *,
+            #monthlyReportPrintArea *,
+            #yearlyReportPrintArea * {
+                visibility: visible;
+            }
+
+            #cityReportPrintArea,
+            #weeklyReportPrintArea,
+            #monthlyReportPrintArea,
+            #yearlyReportPrintArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background: white;
+                box-shadow: none;
+            }
+
+            #cityReportPrintArea .no-print,
+            #weeklyReportPrintArea .no-print,
+            #monthlyReportPrintArea .no-print,
+            #yearlyReportPrintArea .no-print,
+            #cityReportPrintArea .report-actions,
+            #weeklyReportPrintArea .report-actions,
+            #monthlyReportPrintArea .report-actions,
+            #yearlyReportPrintArea .report-actions,
+            #cityReportPrintArea .city-report-controls,
+            #weeklyReportPrintArea .report-controls,
+            #monthlyReportPrintArea .report-controls,
+            #yearlyReportPrintArea .report-controls,
+            #reportsModal,
+            .tab-btn,
+            .modal,
+            nav,
+            .no-print,
+            .hidden {
+                display: none !important;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 18mm;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+
+            tr {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png"
+                            alt="EventFlow logo with a calendar icon surrounded by curved arrows in purple and blue gradient"
+                            class="h-8 w-8">
+                        <span class="ml-2 text-xl font-bold text-gray-900">EventFlow</span>
+                    </div>
+                </div>
+<div class="flex items-center space-x-3">
+                    <!-- Login/Logout Buttons -->
+                    <div id="authButtons">
+                        <button id="loginNavBtn"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                        </button>
+                    </div>
+                    <div id="userInfo" class="hidden flex items-center space-x-3">
+                        <span id="userName" class="text-sm font-medium text-gray-700"></span>
+                        <button id="logoutBtn"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                    <button id="reportsBtn"
+                        class="admin-only inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <i class="fas fa-chart-bar mr-2"></i> Reports
+                    </button>
+                    <button id="createEventBtn"
+                        class="admin-only inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="fas fa-plus mr-2"></i> Create Event
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900">Upcoming Events</h1>
+                <p class="mt-2 text-sm text-gray-500">Discover and join exciting events in your area</p>
+            </div>
+
+            <!-- Filter/Search Bar -->
+            <div class="mb-6 flex flex-col sm:flex-row gap-4">
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="Search events..."
+                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <select id="categoryFilter"
+                    class="block w-full sm:w-auto pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    <option value="all">All Categories</option>
+                    <option value="business">Business</option>
+                    <option value="social">Social</option>
+                    <option value="education">Education</option>
+                    <option value="music">Music</option>
+                    <option value="sports">Sports</option>
+                </select>
+                <button id="applyFilters"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Apply Filters
+                </button>
+            </div>
+
+            <!-- Events Grid -->
+            <div id="eventsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Events will be dynamically loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Event Modal -->
+    <div id="createEventModal" class="modal fixed inset-0 overflow-y-auto hidden" aria-labelledby="modal-title"
+        role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+            <!-- Modal panel -->
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Create New Event
+                            </h3>
+                            <div class="mt-2">
+                                <form id="eventForm">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="eventTitle"
+                                                class="block text-sm font-medium text-gray-700">Event Title</label>
+                                            <input type="text" name="eventTitle" id="eventTitle"
+                                                class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                required>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="eventDate"
+                                                    class="block text-sm font-medium text-gray-700">Date</label>
+                                                <input type="date" name="eventDate" id="eventDate"
+                                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                    required>
+                                            </div>
+                                            <div>
+                                                <label for="eventTime"
+                                                    class="block text-sm font-medium text-gray-700">Time</label>
+                                                <input type="time" name="eventTime" id="eventTime"
+                                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                    required>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="eventCategory"
+                                                    class="block text-sm font-medium text-gray-700">Category</label>
+                                                <select name="eventCategory" id="eventCategory"
+                                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                    required>
+                                                    <option value="">Select a category</option>
+                                                    <option value="business">Business</option>
+                                                    <option value="social">Social</option>
+                                                    <option value="education">Education</option>
+                                                    <option value="music">Music</option>
+                                                    <option value="sports">Sports</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="eventCapacity"
+                                                    class="block text-sm font-medium text-gray-700">Capacity</label>
+                                                <input type="number" name="eventCapacity" id="eventCapacity" min="1"
+                                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                    required>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label for="eventCity"
+                                                class="block text-sm font-medium text-gray-700">City</label>
+                                            <select name="eventCity" id="eventCity"
+                                                class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                required>
+                                                <option value="">Select a city</option>
+                                                <!-- Cities will be populated by JavaScript -->
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label for="eventLocation"
+                                                class="block text-sm font-medium text-gray-700">Location</label>
+                                            <input type="text" name="eventLocation" id="eventLocation"
+                                                class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                required>
+                                        </div>
+
+                                        <div>
+                                            <label for="eventDescription"
+                                                class="block text-sm font-medium text-gray-700">Description</label>
+                                            <textarea name="eventDescription" id="eventDescription" rows="4"
+                                                class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Event Banner</label>
+                                            <div
+                                                class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                                                <div class="space-y-1 text-center">
+                                                    <div class="flex text-sm text-gray-600">
+                                                        <label for="eventBanner"
+                                                            class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                                            <span>Upload a file</span>
+                                                            <input id="eventBanner" name="eventBanner" type="file"
+                                                                class="sr-only">
+                                                        </label>
+                                                        <p class="pl-1">or drag and drop</p>
+                                                    </div>
+                                                    <p class="text-xs text-gray-500">
+                                                        PNG, JPG up to 2MB
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="submitEventBtn"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Create Event
+                    </button>
+                    <button type="button" id="cancelEventBtn"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventDetailsModal" class="modal fixed inset-0 overflow-y-auto hidden" aria-labelledby="modal-title"
+        role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+            <!-- Modal panel -->
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div class="bg-indigo-600 px-4 py-3 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg leading-6 font-medium text-white" id="eventDetailTitle">
+                            Event Details
+                        </h3>
+                        <button id="closeDetailsModal" type="button"
+                            class="bg-indigo-600 rounded-md p-1 text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <span class="sr-only">Close</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white px-4 pt-4 pb-6">
+                    <img id="detailEventBanner"
+                        src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/c43ead8e-119f-4ae0-a054-207134a2b960.png"
+                        alt="Event banner placeholder - will be replaced with the actual event image when details are loaded"
+                        class="w-full h-48 object-cover rounded-lg mb-4">
+
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 id="detailEventName" class="text-xl font-bold text-gray-900">Event Name</h2>
+                                <div class="mt-1 flex items-center text-sm text-gray-500">
+                                    <i class="fas fa-map-marker-alt mr-1.5"></i>
+                                    <span id="detailEventLocation">Location</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center text-sm text-gray-500">
+                                <i class="fas fa-users mr-1.5"></i>
+                                <span id="detailEventCapacity">0</span> attendees
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center text-sm text-gray-500 mb-2">
+                                <i class="fas fa-calendar-day mr-1.5"></i>
+                                <span id="detailEventDate">Date</span>
+                                <span class="mx-2" id="detailEventTime">Time</span>
+                            </div>
+                            <span id="detailEventCategory"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                Category
+                            </span>
+                        </div>
+
+                        <div class="mt-4">
+                            <h3 class="text-sm font-medium text-gray-900">Description</h3>
+                            <p id="detailEventDescription" class="mt-2 text-sm text-gray-600">
+                                Event description will appear here.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="flex justify-between items-center flex-wrap gap-2">
+                            <button id="rsvpBtn"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                RSVP Now
+                            </button>
+                            <div id="rsvpStatus"
+                                class="hidden inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-800 bg-green-100">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                RSVP Confirmed
+                            </div>
+                            <button id="deleteEventBtn"
+                                class="admin-only hidden inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                <i class="fas fa-trash mr-2"></i> Delete Event
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Modal -->
+    <div id="reportsModal" class="modal fixed inset-0 overflow-y-auto hidden" aria-labelledby="modal-title"
+        role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+            <!-- Modal panel -->
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="bg-green-600 px-4 py-3 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg leading-6 font-medium text-white" id="reportsModalTitle">
+                            Event Reports
+                        </h3>
+                        <button id="closeReportsModal" type="button"
+                            class="bg-green-600 rounded-md p-1 text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <span class="sr-only">Close</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white px-4 pt-4 pb-6">
+                    <!-- Tabs -->
+                    <div class="border-b border-gray-200 mb-4">
+                        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button id="tabWeekly"
+                                class="tab-btn border-green-500 text-green-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                Weekly
+                            </button>
+                            <button id="tabMonthly"
+                                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                Monthly
+                            </button>
+                            <button id="tabYearly"
+                                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                Yearly
+                            </button>
+                            <button id="tabCityReport"
+                                class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                City-wise
+                            </button>
+                        </nav>
+                    </div>
+
+                    <div id="cityReport" class="report-content hidden">
+                        <div class="city-report-controls flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+                            <div class="flex-1">
+                                <label for="cityReportSelect" class="block text-sm font-medium text-gray-700 mb-1">Select City</label>
+                                <select id="cityReportSelect"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </select>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button id="printCityReportBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-print mr-2"></i> Print Report
+                                </button>
+                                <button id="downloadPdfBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                                </button>
+                                <button id="downloadCsvBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-csv mr-2"></i> Download CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="cityReportPrintArea" class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+                                    <div class="flex items-center">
+                                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png"
+                                            alt="EventFlow logo" class="h-10 w-10">
+                                        <div class="ml-3">
+                                            <div class="text-xl font-bold text-gray-900">EventFlow</div>
+                                            <div class="text-xs text-gray-500">Event Management System</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right text-sm text-gray-500">
+                                        <div>Report date</div>
+                                        <div id="cityReportDate" class="font-medium text-gray-700"></div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-6">
+                                    <h4 id="cityReportTitle" class="text-2xl font-bold text-gray-900">City-wise Event Report</h4>
+                                    <p id="cityReportSubtitle" class="mt-1 text-sm text-gray-500">Selected City: All Cities</p>
+                                </div>
+
+                                <div id="citySummaryStats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendees</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cityReportTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Report -->
+                    <div id="weeklyReport" class="report-content">
+                        <div class="report-controls flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+                            <div>
+                                <label for="weekFilter" class="block text-sm font-medium text-gray-700 mb-1">Select Week</label>
+                                <select id="weekFilter"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="all">All Weeks</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button id="printWeeklyBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-print mr-2"></i> Print Report
+                                </button>
+                                <button id="downloadWeeklyPdfBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                                </button>
+                                <button id="downloadWeeklyCsvBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-csv mr-2"></i> Download CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div id="weeklyReportPrintArea" class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+                                    <div class="flex items-center">
+                                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png"
+                                            alt="EventFlow logo" class="h-10 w-10">
+                                        <div class="ml-3">
+                                            <div class="text-xl font-bold text-gray-900">EventFlow</div>
+                                            <div class="text-xs text-gray-500">Event Management System</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right text-sm text-gray-500">
+                                        <div>Report date</div>
+                                        <div id="weeklyReportDate" class="font-medium text-gray-700"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <h4 class="text-2xl font-bold text-gray-900">Weekly Workload Report</h4>
+                                    <p id="weeklyReportSubtitle" class="mt-1 text-sm text-gray-500"></p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Week</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Events</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Attendees</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Capacity</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilization %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="weeklyReportBody" class="bg-white divide-y divide-gray-200">
+                                            <!-- Weekly data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Report -->
+                    <div id="monthlyReport" class="report-content hidden">
+                        <div class="report-controls flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+                            <div>
+                                <label for="monthFilter" class="block text-sm font-medium text-gray-700 mb-1">Select Month</label>
+                                <select id="monthFilter"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="all">All Months</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button id="printMonthlyBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-print mr-2"></i> Print Report
+                                </button>
+                                <button id="downloadMonthlyPdfBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                                </button>
+                                <button id="downloadMonthlyCsvBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-csv mr-2"></i> Download CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div id="monthlyReportPrintArea" class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+                                    <div class="flex items-center">
+                                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png"
+                                            alt="EventFlow logo" class="h-10 w-10">
+                                        <div class="ml-3">
+                                            <div class="text-xl font-bold text-gray-900">EventFlow</div>
+                                            <div class="text-xs text-gray-500">Event Management System</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right text-sm text-gray-500">
+                                        <div>Report date</div>
+                                        <div id="monthlyReportDate" class="font-medium text-gray-700"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <h4 class="text-2xl font-bold text-gray-900">Monthly Workload Report</h4>
+                                    <p id="monthlyReportSubtitle" class="mt-1 text-sm text-gray-500"></p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Events</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Attendees</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Capacity</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilization %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="monthlyReportBody" class="bg-white divide-y divide-gray-200">
+                                            <!-- Monthly data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Yearly Report -->
+                    <div id="yearlyReport" class="report-content hidden">
+                        <div class="report-controls flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+                            <div>
+                                <label for="yearFilter" class="block text-sm font-medium text-gray-700 mb-1">Select Year</label>
+                                <select id="yearFilter"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="all">All Years</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 flex-wrap">
+                                <button id="printYearlyBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-print mr-2"></i> Print Report
+                                </button>
+                                <button id="downloadYearlyPdfBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                                </button>
+                                <button id="downloadYearlyCsvBtn" type="button"
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-file-csv mr-2"></i> Download CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div id="yearlyReportPrintArea" class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+                                    <div class="flex items-center">
+                                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png"
+                                            alt="EventFlow logo" class="h-10 w-10">
+                                        <div class="ml-3">
+                                            <div class="text-xl font-bold text-gray-900">EventFlow</div>
+                                            <div class="text-xs text-gray-500">Event Management System</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right text-sm text-gray-500">
+                                        <div>Report date</div>
+                                        <div id="yearlyReportDate" class="font-medium text-gray-700"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-6">
+                                    <h4 class="text-2xl font-bold text-gray-900">Yearly Workload Report</h4>
+                                    <p id="yearlyReportSubtitle" class="mt-1 text-sm text-gray-500"></p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Events</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Attendees</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Capacity</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilization %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="yearlyReportBody" class="bg-white divide-y divide-gray-200">
+                                            <!-- Yearly data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+</div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal fixed inset-0 overflow-y-auto hidden" aria-labelledby="modal-title"
+        role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+            <!-- Modal panel -->
+            <div
+                class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <div class="bg-indigo-600 px-4 py-3 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg leading-6 font-medium text-white" id="loginModalTitle">
+                            Login to EventFlow
+                        </h3>
+                        <button id="closeLoginModal" type="button"
+                            class="bg-indigo-600 rounded-md p-1 text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <span class="sr-only">Close</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <form id="loginForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="loginUsername" class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" name="username" id="loginUsername"
+                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div>
+                                <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                                <input type="password" name="password" id="loginPassword"
+                                    class="mt-1 form-input block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    required>
+                            </div>
+                        </div>
+                        <div id="loginError" class="mt-3 text-sm text-red-600 hidden"></div>
+                    </form>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="loginSubmitBtn"
+                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Login
+                    </button>
+                    <button type="button" id="cancelLoginBtn"
+                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 border-t border-gray-200">
+                    <p class="text-xs text-gray-500 text-center">
+                        Default accounts: admin / admin123 (Admin) | customer / customer123 (Customer)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+        // Events data (loaded from API)
+        let events = [];
+
+        // DOM elements
+        const eventsContainer = document.getElementById('eventsContainer');
+        const createEventBtn = document.getElementById('createEventBtn');
+        const createEventModal = document.getElementById('createEventModal');
+        const cancelEventBtn = document.getElementById('cancelEventBtn');
+        const submitEventBtn = document.getElementById('submitEventBtn');
+        const eventForm = document.getElementById('eventForm');
+        const searchInput = document.getElementById('searchInput');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const applyFilters = document.getElementById('applyFilters');
+        const eventDetailsModal = document.getElementById('eventDetailsModal');
+        const closeDetailsModal = document.getElementById('closeDetailsModal');
+        const rsvpBtn = document.getElementById('rsvpBtn');
+        const rsvpStatus = document.getElementById('rsvpStatus');
+
+        // Reports DOM elements
+        const reportsBtn = document.getElementById('reportsBtn');
+        const reportsModal = document.getElementById('reportsModal');
+        const closeReportsModal = document.getElementById('closeReportsModal');
+        const tabWeekly = document.getElementById('tabWeekly');
+        const tabMonthly = document.getElementById('tabMonthly');
+        const tabYearly = document.getElementById('tabYearly');
+        const tabCityReport = document.getElementById('tabCityReport');
+        const weeklyReport = document.getElementById('weeklyReport');
+        const monthlyReport = document.getElementById('monthlyReport');
+        const yearlyReport = document.getElementById('yearlyReport');
+        const cityReport = document.getElementById('cityReport');
+        const cityReportSelect = document.getElementById('cityReportSelect');
+        const cityReportTitle = document.getElementById('cityReportTitle');
+        const cityReportSubtitle = document.getElementById('cityReportSubtitle');
+        const cityReportDate = document.getElementById('cityReportDate');
+        const citySummaryStats = document.getElementById('citySummaryStats');
+        const cityReportTableBody = document.getElementById('cityReportTableBody');
+        const printCityReportBtn = document.getElementById('printCityReportBtn');
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+        const weeklyReportBody = document.getElementById('weeklyReportBody');
+        const monthlyReportBody = document.getElementById('monthlyReportBody');
+        const yearlyReportBody = document.getElementById('yearlyReportBody');
+        const deleteEventBtn = document.getElementById('deleteEventBtn');
+        const printWeeklyBtn = document.getElementById('printWeeklyBtn');
+        const downloadWeeklyPdfBtn = document.getElementById('downloadWeeklyPdfBtn');
+        const downloadWeeklyCsvBtn = document.getElementById('downloadWeeklyCsvBtn');
+        const printMonthlyBtn = document.getElementById('printMonthlyBtn');
+        const downloadMonthlyPdfBtn = document.getElementById('downloadMonthlyPdfBtn');
+        const downloadMonthlyCsvBtn = document.getElementById('downloadMonthlyCsvBtn');
+        const printYearlyBtn = document.getElementById('printYearlyBtn');
+        const downloadYearlyPdfBtn = document.getElementById('downloadYearlyPdfBtn');
+        const downloadYearlyCsvBtn = document.getElementById('downloadYearlyCsvBtn');
+        const weekFilter = document.getElementById('weekFilter');
+        const monthFilter = document.getElementById('monthFilter');
+        const yearFilter = document.getElementById('yearFilter');
+
+
+        // Indian Cities List
+        const INDIAN_CITIES = [
+            'Agartala', 'Agra', 'Ahmedabad', 'Aizawl', 'Akola', 'Amravati', 'Amritsar', 'Aurangabad',
+            'Bengaluru', 'Bhopal', 'Bhubaneswar', 'Bilaspur', 'Chandigarh', 'Chennai', 'Coimbatore',
+            'Dehradun', 'Delhi', 'Dibrugarh', 'Durgapur', 'Faridabad', 'Gangtok', 'Gaya', 'Ghaziabad',
+            'Gorakhpur', 'Gurugram', 'Guwahati', 'Haridwar', 'Hubballi', 'Hyderabad', 'Imphal', 'Indore',
+            'Itanagar', 'Jabalpur', 'Jaipur', 'Jalgaon', 'Jammu', 'Jamshedpur', 'Jodhpur', 'Kanpur',
+            'Kochi', 'Kohima', 'Kolhapur', 'Kolkata', 'Kota', 'Kozhikode', 'Latur', 'Lucknow', 'Ludhiana',
+            'Mangaluru', 'Meerut', 'Mumbai', 'Mysuru', 'Nagpur', 'Nanded', 'Nashik', 'Noida', 'Panaji',
+            'Parbhani', 'Patna', 'Pune', 'Prayagraj', 'Raipur', 'Rajkot', 'Ranchi', 'Sangli', 'Satara',
+            'Shillong', 'Shimla', 'Siliguri', 'Solapur', 'Srinagar', 'Surat', 'Thane', 'Thiruvananthapuram',
+            'Tiruchirappalli', 'Udaipur', 'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam', 'Warangal'
+        ].sort((a, b) => a.localeCompare(b));
+        const loginNavBtn = document.getElementById('loginNavBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loginModal = document.getElementById('loginModal');
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const cancelLoginBtn = document.getElementById('cancelLoginBtn');
+        const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+        const loginError = document.getElementById('loginError');
+        const authButtons = document.getElementById('authButtons');
+        const userInfo = document.getElementById('userInfo');
+        const userName = document.getElementById('userName');
+
+        // Current selected event
+        let selectedEvent = null;
+
+        // Current user state
+        let currentUser = null;
+        let authToken = null;
+
+        // API Base URL
+        const API_BASE = '/api';
+
+        // Format date to readable string
+        function formatDate(dateString) {
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('en-US', options);
+        }
+
+        // Format time to 12-hour format
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+        }
+
+        // Fetch events from API
+        async function fetchEvents() {
+            try {
+                const response = await fetch(`${API_BASE}/events`);
+                if (!response.ok) throw new Error('Failed to fetch events');
+                events = await response.json();
+            } catch (error) {
+                console.error('Error fetching events:', error);
+                events = [];
+            }
+        }
+
+        // Render events to the page
+        function renderEvents(filteredEvents = events) {
+            eventsContainer.innerHTML = '';
+
+            if (filteredEvents.length === 0) {
+                eventsContainer.innerHTML = `
+                    <div class="col-span-full py-12 text-center">
+                        <i class="fas fa-calendar-times text-gray-400 text-5xl mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900">No events found</h3>
+                        <p class="mt-1 text-sm text-gray-500">Try adjusting your search or filter criteria</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filteredEvents.forEach(event => {
+                const eventElement = document.createElement('div');
+                eventElement.className = 'event-card bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg smooth-transition cursor-pointer';
+                eventElement.innerHTML = `
+                    <div class="relative">
+                        <img src="${event.banner}" alt="Event banner for ${event.title} at ${event.location} on ${formatDate(event.date)}" class="w-full h-48 object-cover">
+                        <div class="absolute bottom-2 left-2 bg-indigo-600 text-white text-xs font-medium px-2 py-1 rounded">
+                            ${event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-lg font-medium text-gray-900 truncate">${event.title}</h3>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>
+                                    ${event.location}
+                                </p>
+                            </div>
+                            ${event.attending ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Attending</span>` : ''}
+                        </div>
+                        <div class="mt-2 flex items-center text-sm text-gray-500">
+                            <i class="fas fa-calendar-day mr-1"></i>
+                            <span>${formatDate(event.date)}</span>
+                            <span class="mx-1">•</span>
+                            <span>${formatTime(event.time)}</span>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="flex-1 mr-2">
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-indigo-600 h-2 rounded-full" style="width: ${(event.attendees / event.capacity) * 100}%"></div>
+                                </div>
+                                <span class="text-xs mt-1 text-gray-500">${event.attendees} of ${event.capacity} spots filled</span>
+                            </div>
+                            <button class="view-details-btn inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" data-id="${event.id}">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+                eventsContainer.appendChild(eventElement);
+            });
+
+            // Add event listeners to all details buttons
+            document.querySelectorAll('.view-details-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const eventId = parseInt(btn.getAttribute('data-id'));
+                    viewEventDetails(eventId);
+                });
+            });
+
+            // Make whole card clickable
+            document.querySelectorAll('.event-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const eventId = parseInt(card.querySelector('.view-details-btn').getAttribute('data-id'));
+                    viewEventDetails(eventId);
+                });
+            });
+        }
+
+        // View event details in modal
+        function viewEventDetails(eventId) {
+            selectedEvent = events.find(event => event.id === eventId);
+            if (!selectedEvent) return;
+
+            document.getElementById('detailEventName').textContent = selectedEvent.title;
+            document.getElementById('detailEventLocation').textContent = selectedEvent.location;
+            document.getElementById('detailEventDate').textContent = formatDate(selectedEvent.date);
+            document.getElementById('detailEventTime').textContent = formatTime(selectedEvent.time);
+            document.getElementById('detailEventDescription').textContent = selectedEvent.description;
+            document.getElementById('detailEventCapacity').textContent = selectedEvent.attendees;
+            document.getElementById('detailEventBanner').src = selectedEvent.banner;
+            document.getElementById('detailEventBanner').alt = `Banner image for ${selectedEvent.title} event`;
+
+            // Update category badge
+            const categoryBadge = document.getElementById('detailEventCategory');
+            categoryBadge.textContent = selectedEvent.category.charAt(0).toUpperCase() + selectedEvent.category.slice(1);
+
+            // Update RSVP button/status
+            if (selectedEvent.attending) {
+                rsvpBtn.classList.add('hidden');
+                rsvpStatus.classList.remove('hidden');
+            } else {
+                rsvpBtn.classList.remove('hidden');
+                rsvpStatus.classList.add('hidden');
+            }
+
+            // Show modal
+            eventDetailsModal.classList.remove('hidden');
+        }
+
+        // Filter events based on search and category
+        function filterEvents() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const categoryValue = categoryFilter.value;
+
+            const filtered = events.filter(event => {
+                const matchesSearch = event.title.toLowerCase().includes(searchTerm) ||
+                    event.description.toLowerCase().includes(searchTerm) ||
+                    event.location.toLowerCase().includes(searchTerm);
+
+                const matchesCategory = categoryValue === 'all' || event.category === categoryValue;
+
+                return matchesSearch && matchesCategory;
+            });
+
+            renderEvents(filtered);
+        }
+
+        // Submit new event to API
+        async function submitEvent(eventData) {
+            try {
+                const response = await fetch(`${API_BASE}/events`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+
+                if (!response.ok) throw new Error('Failed to create event');
+                return await response.json();
+            } catch (error) {
+                console.error('Error creating event:', error);
+                alert('Failed to create event. Please try again.');
+                return null;
+            }
+        }
+
+        // RSVP to event via API
+        async function rsvpToEvent(eventId) {
+            try {
+                const response = await fetch(`${API_BASE}/events/${eventId}/rsvp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to RSVP');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error RSVPing:', error);
+                alert(error.message);
+                return null;
+            }
+        }
+
+        // Delete event from API
+        async function deleteEvent(eventId) {
+            try {
+                const response = await fetch(`${API_BASE}/events/${eventId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to delete event');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                alert(error.message);
+                return null;
+            }
+        }
+
+        // Populate city dropdown in event form
+        function populateCityDropdown() {
+            const citySelect = document.getElementById('eventCity');
+            citySelect.innerHTML = '<option value="">Select a city</option>';
+            INDIAN_CITIES.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+        }
+
+        // Populate filter dropdowns
+        function populateFilterDropdowns() {
+            // Populate week filter
+            const weeks = {};
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const dayOfWeek = date.getDay();
+                const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                const weekStart = new Date(date);
+                weekStart.setDate(diff);
+                const weekKey = weekStart.toISOString().split('T')[0];
+                const weekLabel = `Week of ${formatDate(weekKey)}`;
+                weeks[weekKey] = weekLabel;
+            });
+            
+            weekFilter.innerHTML = '<option value="all">All Weeks</option>';
+            Object.keys(weeks).sort().forEach(week => {
+                const option = document.createElement('option');
+                option.value = week;
+                option.textContent = weeks[week];
+                weekFilter.appendChild(option);
+            });
+
+            // Populate month filter
+            const months = {};
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+                months[monthKey] = `${monthNames[month]} ${year}`;
+            });
+            
+            monthFilter.innerHTML = '<option value="all">All Months</option>';
+            Object.keys(months).sort().forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = months[month];
+                monthFilter.appendChild(option);
+            });
+
+            // Populate year filter
+            const years = {};
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const year = date.getFullYear();
+                years[year] = year;
+            });
+            
+            yearFilter.innerHTML = '<option value="all">All Years</option>';
+            Object.keys(years).sort().forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            });
+        }
+
+// Initialize the page
+        async function init() {
+            // Check for existing session
+            checkExistingSession();
+            
+            // Fetch events from API
+            await fetchEvents();
+            renderEvents();
+
+            // Populate city dropdown
+            populateCityDropdown();
+
+            // Event listeners for create event modal
+            createEventBtn.addEventListener('click', () => {
+                createEventModal.classList.remove('hidden');
+            });
+
+            cancelEventBtn.addEventListener('click', () => {
+                createEventModal.classList.add('hidden');
+            });
+
+            // Close modals when clicking outside
+            [createEventModal, eventDetailsModal].forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.add('hidden');
+                    }
+                });
+            });
+
+            // Submit new event form
+            submitEventBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+
+                // Validate form fields
+                const title = document.getElementById('eventTitle').value.trim();
+                const date = document.getElementById('eventDate').value;
+                const time = document.getElementById('eventTime').value;
+                const category = document.getElementById('eventCategory').value;
+                const city = document.getElementById('eventCity').value.trim();
+                const location = document.getElementById('eventLocation').value.trim();
+                const capacity = document.getElementById('eventCapacity').value;
+                const description = document.getElementById('eventDescription').value.trim();
+
+                // Check for empty required fields
+                if (!title || !date || !time || !category || !city || !location || !capacity) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
+                const eventData = {
+                    title: title,
+                    date: date,
+                    time: time,
+                    category: category,
+                    city: city,
+                    location: location,
+                    description: description,
+                    capacity: parseInt(capacity, 10),
+                    banner: "https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/30519a01-4c6e-4dc3-94e3-13139d77a61a.png"
+                };
+
+                const newEvent = await submitEvent(eventData);
+
+                if (newEvent) {
+                    // Add to local events array
+                    events.unshift(newEvent);
+                    renderEvents();
+                    eventForm.reset();
+                    createEventModal.classList.add('hidden');
+                    // Regenerate reports if reports modal is open
+                    if (!reportsModal.classList.contains('hidden')) {
+                        generateReports();
+                    }
+                }
+            });
+
+            // Event details modal close
+            closeDetailsModal.addEventListener('click', () => {
+                eventDetailsModal.classList.add('hidden');
+            });
+
+            // RSVP to event
+            rsvpBtn.addEventListener('click', async () => {
+                if (selectedEvent) {
+                    const updatedEvent = await rsvpToEvent(selectedEvent.id);
+                    if (updatedEvent) {
+                        // Update local event data
+                        const eventIndex = events.findIndex(e => e.id === selectedEvent.id);
+                        if (eventIndex !== -1) {
+                            events[eventIndex] = updatedEvent;
+                        }
+                        selectedEvent = updatedEvent;
+                        renderEvents();
+
+                        // Update modal display
+                        rsvpBtn.classList.add('hidden');
+                        rsvpStatus.classList.remove('hidden');
+
+                        // Update the displayed attendee count
+                        document.getElementById('detailEventCapacity').textContent = updatedEvent.attendees;
+                    }
+                }
+            });
+
+            // Filter events
+            applyFilters.addEventListener('click', filterEvents);
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') filterEvents();
+            });
+
+            // Reports button click
+            reportsBtn.addEventListener('click', () => {
+                generateReports();
+                reportsModal.classList.remove('hidden');
+            });
+
+            cityReportSelect.addEventListener('change', renderCityReport);
+            printCityReportBtn.addEventListener('click', () => printReportWindow(cityReportSelect.value));
+            downloadPdfBtn.addEventListener('click', () => printReportWindow(cityReportSelect.value));
+            downloadCsvBtn.addEventListener('click', () => exportCityReportCsv(cityReportSelect.value));
+
+            // Weekly report listeners
+            printWeeklyBtn.addEventListener('click', printWeeklyReport);
+            downloadWeeklyPdfBtn.addEventListener('click', printWeeklyReport);
+            downloadWeeklyCsvBtn.addEventListener('click', downloadWeeklyReportCsv);
+            weekFilter.addEventListener('change', generateWeeklyReport);
+
+            // Monthly report listeners
+            printMonthlyBtn.addEventListener('click', printMonthlyReport);
+            downloadMonthlyPdfBtn.addEventListener('click', printMonthlyReport);
+            downloadMonthlyCsvBtn.addEventListener('click', downloadMonthlyReportCsv);
+            monthFilter.addEventListener('change', generateMonthlyReport);
+
+            // Yearly report listeners
+            printYearlyBtn.addEventListener('click', printYearlyReport);
+            downloadYearlyPdfBtn.addEventListener('click', printYearlyReport);
+            downloadYearlyCsvBtn.addEventListener('click', downloadYearlyReportCsv);
+            yearFilter.addEventListener('change', generateYearlyReport);
+
+            // Delete event listener
+            deleteEventBtn.addEventListener('click', async () => {
+                if (!selectedEvent) return;
+                const confirmed = confirm('Are you sure you want to delete this event? This action cannot be undone.');
+                if (!confirmed) return;
+
+                const deleted = await deleteEvent(selectedEvent.id);
+                if (deleted) {
+                    events = events.filter(e => e.id !== selectedEvent.id);
+                    renderEvents();
+                    eventDetailsModal.classList.add('hidden');
+                    generateReports();
+                }
+            });
+
+            // Close reports modal
+            closeReportsModal.addEventListener('click', () => {
+                reportsModal.classList.add('hidden');
+            });
+
+            // Tab switching
+            tabWeekly.addEventListener('click', () => switchTab('weekly'));
+            tabMonthly.addEventListener('click', () => switchTab('monthly'));
+            tabYearly.addEventListener('click', () => switchTab('yearly'));
+            tabCityReport.addEventListener('click', () => switchTab('city'));
+
+            // Close reports modal when clicking outside
+            reportsModal.addEventListener('click', (e) => {
+                if (e.target === reportsModal) {
+                    reportsModal.classList.add('hidden');
+                }
+            });
+
+            // ==================== LOGIN MODAL EVENT LISTENERS ====================
+            
+            // Open login modal
+            loginNavBtn.addEventListener('click', () => {
+                loginModal.classList.remove('hidden');
+            });
+
+            // Close login modal
+            closeLoginModal.addEventListener('click', () => {
+                loginModal.classList.add('hidden');
+            });
+
+            cancelLoginBtn.addEventListener('click', () => {
+                loginModal.classList.add('hidden');
+            });
+
+            // Login submit
+            loginSubmitBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                
+                if (!username || !password) {
+                    loginError.textContent = 'Please enter username and password';
+                    loginError.classList.remove('hidden');
+                    return;
+                }
+                
+                await login(username, password);
+            });
+
+            // Logout
+            logoutBtn.addEventListener('click', logout);
+
+            // Close login modal when clicking outside
+            loginModal.addEventListener('click', (e) => {
+                if (e.target === loginModal) {
+                    loginModal.classList.add('hidden');
+                }
+            });
+        }
+
+        // Generate and display reports
+        function generateReports() {
+            populateFilterDropdowns();
+            generateWeeklyReport();
+            generateMonthlyReport();
+            generateYearlyReport();
+            populateCityReportOptions();
+            renderCityReport();
+        }
+
+        function normalizeCityName(city) {
+            const value = (city || '').toString().trim();
+            return value || 'Unknown City';
+        }
+
+        function getCityOptions() {
+            const cities = [...new Set(events.map(event => normalizeCityName(event.city)).filter(Boolean))];
+            return ['all', ...cities.sort((a, b) => a.localeCompare(b))];
+        }
+
+        function populateCityReportOptions() {
+            const options = getCityOptions();
+            const currentValue = cityReportSelect.value || 'all';
+            cityReportSelect.innerHTML = `
+                <option value="all">All Cities</option>
+                ${options.filter(option => option !== 'all').map(city => `<option value="${city}">${city}</option>`).join('')}
+            `;
+            if (options.includes(currentValue)) {
+                cityReportSelect.value = currentValue;
+            } else {
+                cityReportSelect.value = 'all';
+            }
+        }
+
+        function getCityReportData(selectedCity = cityReportSelect.value || 'all') {
+            const filteredEvents = selectedCity === 'all'
+                ? [...events]
+                : events.filter(event => normalizeCityName(event.city) === selectedCity);
+
+            const totalEvents = filteredEvents.length;
+            const totalAttendees = filteredEvents.reduce((sum, event) => sum + (Number(event.attendees) || 0), 0);
+            const totalCapacity = filteredEvents.reduce((sum, event) => sum + (Number(event.capacity) || 0), 0);
+            const totalAvailableSeats = Math.max(totalCapacity - totalAttendees, 0);
+            const participationPct = totalCapacity > 0 ? Math.round((totalAttendees / totalCapacity) * 100) : 0;
+
+            const rows = filteredEvents
+                .map(event => {
+                    const attendees = Number(event.attendees) || 0;
+                    const capacity = Number(event.capacity) || 0;
+                    const availableSeats = Math.max(capacity - attendees, 0);
+                    const percent = capacity > 0 ? Math.round((attendees / capacity) * 100) : 0;
+                    const status = attendees >= capacity ? 'Full' : (attendees > 0 ? 'Open' : 'Scheduled');
+
+                    return {
+                        city: normalizeCityName(event.city),
+                        title: event.title || 'Untitled Event',
+                        category: (event.category || 'uncategorized').charAt(0).toUpperCase() + (event.category || 'uncategorized').slice(1),
+                        date: event.date || 'N/A',
+                        time: event.time || 'N/A',
+                        location: event.location || 'TBD',
+                        capacity,
+                        attendees,
+                        availableSeats,
+                        participationPct: percent,
+                        status
+                    };
+                })
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            return {
+                cityName: selectedCity === 'all' ? 'All Cities' : selectedCity,
+                filteredEvents,
+                totalEvents,
+                totalAttendees,
+                totalCapacity,
+                availableSeats: totalAvailableSeats,
+                participationPct,
+                rows
+            };
+        }
+
+        function renderCityReport() {
+            const selectedCity = cityReportSelect.value || 'all';
+            const reportData = getCityReportData(selectedCity);
+            const selectedLabel = reportData.cityName;
+
+            cityReportDate.textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            cityReportTitle.textContent = 'City-wise Event Report';
+            cityReportSubtitle.textContent = `Selected City: ${selectedLabel}`;
+
+            citySummaryStats.innerHTML = `
+                <div class="rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+                    <div class="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Total Events</div>
+                    <div class="mt-2 text-2xl font-bold text-indigo-900">${reportData.totalEvents}</div>
+                </div>
+                <div class="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                    <div class="text-xs uppercase tracking-wide text-emerald-600 font-semibold">Registered</div>
+                    <div class="mt-2 text-2xl font-bold text-emerald-900">${reportData.totalAttendees}</div>
+                </div>
+                <div class="rounded-lg border border-amber-100 bg-amber-50 p-4">
+                    <div class="text-xs uppercase tracking-wide text-amber-600 font-semibold">Available Seats</div>
+                    <div class="mt-2 text-2xl font-bold text-amber-900">${reportData.availableSeats}</div>
+                </div>
+                <div class="rounded-lg border border-sky-100 bg-sky-50 p-4">
+                    <div class="text-xs uppercase tracking-wide text-sky-600 font-semibold">Participation</div>
+                    <div class="mt-2 text-2xl font-bold text-sky-900">${reportData.participationPct}%</div>
+                </div>
+            `;
+
+            if (!reportData.rows.length) {
+                cityReportTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="11" class="px-4 py-8 text-center text-sm text-gray-500">No events found for this selection.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            cityReportTableBody.innerHTML = reportData.rows.map(event => `
+                <tr>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${event.city}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.title}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.category}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${formatDate(event.date)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${formatTime(event.time)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.location}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.capacity}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.attendees}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.availableSeats}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${event.participationPct}%</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium ${event.status === 'Full' ? 'bg-red-100 text-red-800' : event.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${event.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function buildCityReportDocument(selectedCity = cityReportSelect.value || 'all') {
+            const reportData = getCityReportData(selectedCity);
+            const generatedDate = new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+
+            const rowsHtml = reportData.rows.length
+                ? reportData.rows.map(event => `
+                    <tr>
+                        <td>${event.city}</td>
+                        <td>${event.title}</td>
+                        <td>${event.category}</td>
+                        <td>${formatDate(event.date)}</td>
+                        <td>${formatTime(event.time)}</td>
+                        <td>${event.location}</td>
+                        <td>${event.capacity}</td>
+                        <td>${event.attendees}</td>
+                        <td>${event.availableSeats}</td>
+                        <td>${event.participationPct}%</td>
+                        <td>${event.status}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="11">No events found.</td></tr>';
+
+            return `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8" />
+                    <title>City-wise Event Report</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 18px; margin-bottom: 24px; }
+                        .brand { display: flex; align-items: center; gap: 10px; }
+                        .brand img { width: 42px; height: 42px; }
+                        .brand-name { font-size: 26px; font-weight: 700; }
+                        .report-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+                        .summary { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; margin: 24px 0; }
+                        .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #f9fafb; }
+                        .stat-label { font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.08em; }
+                        .stat-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 12px; }
+                        th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
+                        th { background: #f3f4f6; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+                        .status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-weight: 600; }
+                        .status-open { background: #dcfce7; color: #166534; }
+                        .status-full { background: #fee2e2; color: #991b1b; }
+                        .status-scheduled { background: #fef3c7; color: #92400e; }
+                        @media print { body { margin: 0; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="brand">
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/9a96260a-b125-4258-958a-d653d34d6534.png" alt="EventFlow logo" />
+                            <div>
+                                <div class="brand-name">EventFlow</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div>Generated</div>
+                            <strong>${generatedDate}</strong>
+                        </div>
+                    </div>
+
+                    <div class="report-title">City-wise Event Report</div>
+                    <div><strong>Selected City:</strong> ${reportData.cityName}</div>
+
+                    <div class="summary">
+                        <div class="stat"><div class="stat-label">Total Events</div><div class="stat-value">${reportData.totalEvents}</div></div>
+                        <div class="stat"><div class="stat-label">Total Attendees</div><div class="stat-value">${reportData.totalAttendees}</div></div>
+                        <div class="stat"><div class="stat-label">Available Seats</div><div class="stat-value">${reportData.availableSeats}</div></div>
+                        <div class="stat"><div class="stat-label">Participation</div><div class="stat-value">${reportData.participationPct}%</div></div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>City</th>
+                                <th>Event</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Location</th>
+                                <th>Capacity</th>
+                                <th>Attendees</th>
+                                <th>Available</th>
+                                <th>%</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+        }
+
+        function printReportWindow(selectedCity = cityReportSelect.value || 'all') {
+            const printWindow = window.open('', '_blank', 'width=1200,height=900');
+            if (!printWindow) {
+                alert('Please allow pop-ups to print the report.');
+                return;
+            }
+
+            printWindow.document.write(buildCityReportDocument(selectedCity));
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 400);
+        }
+
+        function exportCityReportCsv(selectedCity = cityReportSelect.value || 'all') {
+            const reportData = getCityReportData(selectedCity);
+            const rows = [
+                ['City', 'Event Name', 'Event Category', 'Event Date', 'Event Time', 'Event Location', 'Total Capacity', 'Registered Attendees', 'Available Seats', 'Participation %', 'Event Status']
+            ];
+
+            reportData.rows.forEach(event => {
+                rows.push([
+                    event.city,
+                    event.title,
+                    event.category,
+                    formatDate(event.date),
+                    formatTime(event.time),
+                    event.location,
+                    event.capacity,
+                    event.attendees,
+                    event.availableSeats,
+                    `${event.participationPct}%`,
+                    event.status
+                ]);
+            });
+
+            const csvContent = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', `${reportData.cityName.toLowerCase().replace(/\s+/g, '-') || 'all-cities'}-report.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Get filtered weekly report data
+        function getWeeklyReportData(selectedWeek = 'all') {
+            const weeklyData = {};
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const dayOfWeek = date.getDay();
+                const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                const weekStart = new Date(date);
+                weekStart.setDate(diff);
+                const weekKey = weekStart.toISOString().split('T')[0];
+
+                if (selectedWeek !== 'all' && weekKey !== selectedWeek) return;
+
+                if (!weeklyData[weekKey]) {
+                    weeklyData[weekKey] = { events: 0, attendees: 0, capacity: 0 };
+                }
+                weeklyData[weekKey].events++;
+                weeklyData[weekKey].attendees += event.attendees || 0;
+                weeklyData[weekKey].capacity += event.capacity || 0;
+            });
+            return weeklyData;
+        }
+
+        // Get filtered monthly report data
+        function getMonthlyReportData(selectedMonth = 'all') {
+            const monthlyData = {};
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+                const monthName = `${monthNames[month]} ${year}`;
+
+                if (selectedMonth !== 'all' && monthKey !== selectedMonth) return;
+
+                if (!monthlyData[monthKey]) {
+                    monthlyData[monthKey] = { name: monthName, events: 0, attendees: 0, capacity: 0 };
+                }
+                monthlyData[monthKey].events++;
+                monthlyData[monthKey].attendees += event.attendees || 0;
+                monthlyData[monthKey].capacity += event.capacity || 0;
+            });
+            return monthlyData;
+        }
+
+        // Get filtered yearly report data
+        function getYearlyReportData(selectedYear = 'all') {
+            const yearlyData = {};
+            events.forEach(event => {
+                const date = new Date(event.date);
+                const year = date.getFullYear();
+
+                if (selectedYear !== 'all' && year.toString() !== selectedYear) return;
+
+                if (!yearlyData[year]) {
+                    yearlyData[year] = { events: 0, attendees: 0, capacity: 0 };
+                }
+                yearlyData[year].events++;
+                yearlyData[year].attendees += event.attendees || 0;
+                yearlyData[year].capacity += event.capacity || 0;
+            });
+            return yearlyData;
+        }
+
+        // Print weekly report
+        function printWeeklyReport() {
+            const printArea = document.getElementById('weeklyReportPrintArea');
+            const printWindow = window.open('', '', 'width=1200,height=900');
+            printWindow.document.write(printArea.innerHTML);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 400);
+        }
+
+        // Print monthly report
+        function printMonthlyReport() {
+            const printArea = document.getElementById('monthlyReportPrintArea');
+            const printWindow = window.open('', '', 'width=1200,height=900');
+            printWindow.document.write(printArea.innerHTML);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 400);
+        }
+
+        // Print yearly report
+        function printYearlyReport() {
+            const printArea = document.getElementById('yearlyReportPrintArea');
+            const printWindow = window.open('', '', 'width=1200,height=900');
+            printWindow.document.write(printArea.innerHTML);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 400);
+        }
+
+        // Download weekly report as CSV
+        function downloadWeeklyReportCsv() {
+            const selectedWeek = weekFilter.value || 'all';
+            const weeklyData = getWeeklyReportData(selectedWeek);
+            const rows = [['Week', 'Total Events', 'Total Attendees', 'Avg Capacity', 'Utilization %']];
+            
+            Object.keys(weeklyData).sort().forEach(week => {
+                const data = weeklyData[week];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+                rows.push([formatDate(week), data.events, data.attendees, avgCapacity, `${utilization}%`]);
+            });
+
+            const csvContent = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'weekly-report.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Download monthly report as CSV
+        function downloadMonthlyReportCsv() {
+            const selectedMonth = monthFilter.value || 'all';
+            const monthlyData = getMonthlyReportData(selectedMonth);
+            const rows = [['Month', 'Total Events', 'Total Attendees', 'Avg Capacity', 'Utilization %']];
+            
+            Object.keys(monthlyData).sort().forEach(month => {
+                const data = monthlyData[month];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+                rows.push([data.name, data.events, data.attendees, avgCapacity, `${utilization}%`]);
+            });
+
+            const csvContent = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'monthly-report.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Download yearly report as CSV
+        function downloadYearlyReportCsv() {
+            const selectedYear = yearFilter.value || 'all';
+            const yearlyData = getYearlyReportData(selectedYear);
+            const rows = [['Year', 'Total Events', 'Total Attendees', 'Avg Capacity', 'Utilization %']];
+            
+            Object.keys(yearlyData).sort().forEach(year => {
+                const data = yearlyData[year];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+                rows.push([year, data.events, data.attendees, avgCapacity, `${utilization}%`]);
+            });
+
+            const csvContent = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'yearly-report.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Generate weekly report data
+        function generateWeeklyReport() {
+            const selectedWeek = weekFilter.value || 'all';
+            const weeklyData = getWeeklyReportData(selectedWeek);
+            const sortedWeeks = Object.keys(weeklyData).sort();
+
+            document.getElementById('weeklyReportDate').textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            const reportLabel = selectedWeek === 'all' ? 'All Weeks' : `Week of ${formatDate(selectedWeek)}`;
+            document.getElementById('weeklyReportSubtitle').textContent = `Report Period: ${reportLabel}`;
+
+            let html = '';
+            sortedWeeks.forEach(week => {
+                const data = weeklyData[week];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+
+                html += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Week of ${formatDate(week)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.events}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.attendees}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${avgCapacity}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${utilization >= 70 ? 'bg-green-100 text-green-800' : utilization >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                                ${utilization}%
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (!html) {
+                html = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No data available</td></tr>';
+            }
+
+            weeklyReportBody.innerHTML = html;
+        }
+
+        // Generate monthly report data
+        function generateMonthlyReport() {
+            const selectedMonth = monthFilter.value || 'all';
+            const monthlyData = getMonthlyReportData(selectedMonth);
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            const sortedMonths = Object.keys(monthlyData).sort();
+
+            document.getElementById('monthlyReportDate').textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            const reportLabel = selectedMonth === 'all' ? 'All Months' : monthlyData[selectedMonth]?.name || 'Selected Month';
+            document.getElementById('monthlyReportSubtitle').textContent = `Report Period: ${reportLabel}`;
+
+            let html = '';
+            sortedMonths.forEach(month => {
+                const data = monthlyData[month];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+
+                html += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${data.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.events}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.attendees}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${avgCapacity}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${utilization >= 70 ? 'bg-green-100 text-green-800' : utilization >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                                ${utilization}%
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (!html) {
+                html = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No data available</td></tr>';
+            }
+
+            monthlyReportBody.innerHTML = html;
+        }
+
+        // Generate yearly report data
+        function generateYearlyReport() {
+            const selectedYear = yearFilter.value || 'all';
+            const yearlyData = getYearlyReportData(selectedYear);
+            const sortedYears = Object.keys(yearlyData).sort();
+
+            document.getElementById('yearlyReportDate').textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            const reportLabel = selectedYear === 'all' ? 'All Years' : selectedYear;
+            document.getElementById('yearlyReportSubtitle').textContent = `Report Period: ${reportLabel}`;
+
+            let html = '';
+            sortedYears.forEach(year => {
+                const data = yearlyData[year];
+                const avgCapacity = data.events > 0 ? Math.round(data.capacity / data.events) : 0;
+                const utilization = data.capacity > 0 ? Math.round((data.attendees / data.capacity) * 100) : 0;
+
+                html += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${year}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.events}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${data.attendees}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${avgCapacity}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${utilization >= 70 ? 'bg-green-100 text-green-800' : utilization >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                                ${utilization}%
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (!html) {
+                html = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No data available</td></tr>';
+            }
+
+            yearlyReportBody.innerHTML = html;
+        }
+
+// Switch between report tabs
+        function switchTab(tabName) {
+            const tabs = [
+                { btn: tabWeekly, content: weeklyReport },
+                { btn: tabMonthly, content: monthlyReport },
+                { btn: tabYearly, content: yearlyReport },
+                { btn: tabCityReport, content: cityReport }
+            ];
+
+            tabs.forEach(tab => {
+                const matches = tab.btn.id === `tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}` || (tabName === 'city' && tab.btn.id === 'tabCityReport');
+
+                if (matches) {
+                    tab.btn.classList.remove('border-transparent', 'text-gray-500');
+                    tab.btn.classList.add('border-green-500', 'text-green-600');
+                    tab.content.classList.remove('hidden');
+                } else {
+                    tab.btn.classList.remove('border-green-500', 'text-green-600');
+                    tab.btn.classList.add('border-transparent', 'text-gray-500');
+                    tab.content.classList.add('hidden');
+                }
+            });
+        }
+
+        // ==================== AUTHENTICATION FUNCTIONS ====================
+
+        // Update UI based on authentication state
+        function updateAuthUI() {
+            if (currentUser) {
+                // User is logged in
+                authButtons.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                userName.textContent = currentUser.username;
+                
+                // Show/hide admin buttons based on role
+                if (currentUser.role === 'admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => {
+                        el.classList.remove('hidden');
+                    });
+                } else {
+                    document.querySelectorAll('.admin-only').forEach(el => {
+                        el.classList.add('hidden');
+                    });
+                }
+            } else {
+                // User is not logged in
+                authButtons.classList.remove('hidden');
+                userInfo.classList.add('hidden');
+                
+                // Hide admin-only elements
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.classList.add('hidden');
+                });
+            }
+        }
+
+        // Login function
+        async function login(username, password) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                // Store user data and token
+                currentUser = data.user;
+                authToken = data.token;
+                
+                // Save to localStorage
+                localStorage.setItem('eventflow_user', JSON.stringify(currentUser));
+                localStorage.setItem('eventflow_token', authToken);
+
+                // Update UI
+                updateAuthUI();
+                
+                // Close modal
+                loginModal.classList.add('hidden');
+                
+                // Clear form
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+                loginError.classList.add('hidden');
+
+                return true;
+            } catch (error) {
+                loginError.textContent = error.message;
+                loginError.classList.remove('hidden');
+                return false;
+            }
+        }
+
+        // Logout function
+        function logout() {
+            currentUser = null;
+            authToken = null;
+            
+            // Clear localStorage
+            localStorage.removeItem('eventflow_user');
+            localStorage.removeItem('eventflow_token');
+            
+            // Update UI
+            updateAuthUI();
+        }
+
+        // Check for existing session
+        function checkExistingSession() {
+            const savedUser = localStorage.getItem('eventflow_user');
+            const savedToken = localStorage.getItem('eventflow_token');
+            
+            if (savedUser && savedToken) {
+                currentUser = JSON.parse(savedUser);
+                authToken = savedToken;
+                updateAuthUI();
+            } else {
+                // Hide admin buttons by default
+                updateAuthUI();
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
